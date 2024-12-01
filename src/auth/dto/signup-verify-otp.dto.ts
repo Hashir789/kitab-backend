@@ -23,7 +23,7 @@ export class SignupVerifyOtpDto {
 
   @IsNotEmpty()
   @IsString()
-  @Length(6, 6)
+  @Length(4, 4)
   otp: string;
 
 }

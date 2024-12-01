@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthController } from './auth.controller';
         signOptions: { algorithm: 'RS256', expiresIn: configService.get<string>('ACCESS_TOKEN_EXPIRATION_TIME') ?? '1h' },
       }),
     }),
+    UsersModule
   ],
   controllers: [AuthController],
   providers: [AuthService]
