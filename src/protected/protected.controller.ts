@@ -1,14 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
-import { Logger } from 'src/logger/logger.service';
+import { Controller, Get, Req } from '@nestjs/common';
 
 @Controller('protected')
 export class ProtectedController {
-  
-  constructor (private readonly loggerService: Logger) {}
 
   @Get()
-  getProtectedData(): string {
-    this.loggerService.log('getProtectedData')
-    return 'this is a protected route';
+  getProtectedData(@Req() request) {
+    return request.user;
   }
 }

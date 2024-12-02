@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AppService } from './app.service';
 import { AppController } from './app.controller';
-import { LoggerModule } from 'src/logger/logger.module';
+import { AppService } from './app.service';
 import { ConfigModule, ConfigModuleOptions } from '@nestjs/config';
+import { Logger } from 'src/logger/logger.service';
+import { AuthModule } from 'src/auth/auth.module';
 import { ProtectedController } from 'src/protected/protected.controller';
 
 @Module({
@@ -10,10 +11,11 @@ import { ProtectedController } from 'src/protected/protected.controller';
     ConfigModule.forRoot({
       isGlobal: true,
     } as ConfigModuleOptions),
-    LoggerModule
+    AuthModule
   ],
   controllers: [AppController, ProtectedController],
-  providers: [AppService],
+  providers: [AppService, Logger],
+  exports: [Logger]
 })
 
 export class AppModule {}
