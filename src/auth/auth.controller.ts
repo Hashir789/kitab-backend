@@ -16,7 +16,7 @@ export class AuthController {
   }
 
   @Post('signup/verify-otp')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.CREATED)
   async signupVerifyOtp(@Body() body: SignupVerifyOtpDto) {
     return this.authService.signupVerifyOtp(body);
   }

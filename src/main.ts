@@ -1,10 +1,10 @@
+import { JwtService } from '@nestjs/jwt';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from './logger/logger.service';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from './auth/auth.guard';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap(): Promise<void> {
   const app: INestApplication = await NestFactory.create(AppModule, { logger: false });
@@ -19,7 +19,7 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true
     }),
   );
-  app.useGlobalGuards(new JwtAuthGuard(app.get(JwtService), app.get(ConfigService)));
+  app.useGlobalGuards( new JwtAuthGuard(app.get(JwtService), app.get(ConfigService), logger) );
   await app.listen(port);
 }
 

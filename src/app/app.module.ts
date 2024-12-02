@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule, ConfigModuleOptions } from '@nestjs/config';
-import { Logger } from 'src/logger/logger.service';
+import { AppController } from './app.controller';
 import { AuthModule } from 'src/auth/auth.module';
+import { UsersModule } from 'src/users/users.module';
+import { LoggerModule } from 'src/logger/logger.module';
+import { PostgresModule } from 'src/postgres/postgres.module';
+import { ConfigModule, ConfigModuleOptions } from '@nestjs/config';
 import { ProtectedController } from 'src/protected/protected.controller';
 
 @Module({
@@ -11,11 +13,13 @@ import { ProtectedController } from 'src/protected/protected.controller';
     ConfigModule.forRoot({
       isGlobal: true,
     } as ConfigModuleOptions),
-    AuthModule
+    AuthModule,
+    LoggerModule,
+    PostgresModule,
+    UsersModule
   ],
   controllers: [AppController, ProtectedController],
-  providers: [AppService, Logger],
-  exports: [Logger]
+  providers: [AppService]
 })
 
 export class AppModule {}

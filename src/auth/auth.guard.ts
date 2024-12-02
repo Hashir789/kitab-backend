@@ -1,7 +1,8 @@
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthenticatedRequest } from './auth.interface';
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Logger } from 'src/logger/logger.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -11,14 +12,16 @@ export class JwtAuthGuard implements CanActivate {
     '/api/auth/signup/request-otp',
     '/api/auth/signup/verify-otp',
     '/api/auth/login'
-  ]
+  ];
   
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly loggerService: Logger
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    this.loggerService.log('canActivate {guard}');
     const request: AuthenticatedRequest = context.switchToHttp().getRequest();
     const authHeader: string | undefined = request.headers['authorization'];
     if (this.excludedUrls.includes(request.url)) {
@@ -30,7 +33,11 @@ export class JwtAuthGuard implements CanActivate {
     const token: string = authHeader.split(' ')[1];
     try {
       const publicKey: string = this.configService.get<string>('JWT_PUBLIC_KEY') ?? '';
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload : { 
+        id: string,
+        name: string,
+        email: string
+      } = await this.jwtService.verifyAsync(token, {
         publicKey,
         algorithms: ['RS256'],
       });

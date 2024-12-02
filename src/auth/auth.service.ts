@@ -4,25 +4,23 @@ import { JwtService } from '@nestjs/jwt';
 import * as nodemailer from 'nodemailer';
 import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from 'src/logger/logger.service';
+import { UsersService } from 'src/users/users.service';
 import { SignupVerifyOtpDto } from './dto/signup-verify-otp.dto';
 import { SignupRequestOtpDto } from './dto/signup-request-otp.dto';
-import { Injectable, UnauthorizedException, ConflictException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
-
+import { Injectable, UnauthorizedException, BadRequestException, HttpException } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
-
-  private readonly users = [
-    { id: '1', username: 'testuser1', password: 'password1', email: "testuser1@gmail.com" },
-    { id: '2', username: 'testuser2', password: 'password2', email: "testuser2@gmail.com" }
-  ];
 
   private readonly transporter: nodemailer.Transporter;
   private readonly secret: string;
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
+    private readonly loggerService: Logger
   ) {
     this.secret = speakeasy.generateSecret({ length: 20 }).base32;
     this.transporter = nodemailer.createTransport({
@@ -34,88 +32,111 @@ export class AuthService {
     });
   }
 
-  // controller functions
+  // Controller functions
 
-  async signupRequestOtp(body: SignupRequestOtpDto) {
-    const user = this.users.find(
-      (user) => user.email === body.email
-    );
-    if (user) {
-      throw new ConflictException('User with the given email already exists')
+  async signupRequestOtp(body: SignupRequestOtpDto): Promise<{ message: string; statusCode: number }> {
+    try {
+      this.loggerService.log('signupRequestOtp {controller}');
+      await this.usersService.validateEmailAvailability(body.email)
+      const otp = this.generateOtp();
+      await this.sendEmail(
+        body.email,
+        'OTP Code for Kitaab',
+        `Thank you for signing up. Your OTP code is ${otp}`
+      );
+      return { message: 'OTP sent successfully', statusCode: 200 };
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
     }
-    const emailResponse = await this.sendEmail(
-      body.email,
-      'OTP Code for Kitaab',
-      `Thank you for signing up. Your OTP code is ${this.generateOtp()}`,
-    );
-    if (!emailResponse.success) {
-      throw new InternalServerErrorException('Failed to send OTP');
+  }
+
+  async signupVerifyOtp(body: SignupVerifyOtpDto): Promise<{ message: string; accessToken: string; statusCode: number }> {
+    try {
+      this.loggerService.log('signupVerifyOtp {controller}');
+      this.verifyOtp(body.otp);
+      const hashedPassword = await this.hashPassword(body.password);
+      const userInstance = await this.usersService.createUser(body.name, body.email, hashedPassword)
+      const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY');
+      const accessToken = this.jwtService.sign(
+        { id: userInstance.id, name: userInstance.name, email: userInstance.email },
+        { privateKey, algorithm: 'RS256' }
+      );
+      return { accessToken, message: 'User registered successfully', statusCode: 201 };  
+    } catch (error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
     }
-    return { message: 'OTP sent successfully', statusCode: 200 };
   }
 
-  async signupVerifyOtp(body: SignupVerifyOtpDto) {
-    if (!this.verifyOtp(body.otp)) {
-    throw new BadRequestException('Invalid OTP');
+  async login(body: LoginDto): Promise<{ message: string; accessToken: string; statusCode: number }> {
+    try{
+      this.loggerService.log('login {controller}');
+      const userInstance = await this.usersService.getUser(body.email)
+      await this.comparePasswords(body.password, userInstance.password)
+      const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY');
+      const accessToken = this.jwtService.sign(
+        { id: userInstance.id, name: userInstance.name, email: userInstance.email },
+        { privateKey, algorithm: 'RS256' }
+      );
+      return { accessToken, message: 'User logged in successfully', statusCode: 200 };
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
     }
-    body.password = await this.hashPassword(body.password)
-    const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY') ?? '';
-    return { message: 'User registered successfully', accessToken: this.jwtService.sign(body, { privateKey, algorithm: 'RS256' }), statusCode: 200 };
   }
 
-  async login(body: LoginDto) {
-    const user = await this.validateUser(body.email, body.password);
-    const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY') ?? '';
-    return {
-      message: 'User login successfully', access_token: this.jwtService.sign(user, { privateKey, algorithm: 'RS256' }), statusCode: 200
-    };
-  }
+  // Helper functions
 
-  // helper functions
-
-  async validateUser(email: string, password: string): Promise<{ id: string; username: string; password: string; email: string }> {
-    const user = this.users.find(
-      (u) => u.email === email && password
-    );
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    return user;
-  }
-
-  async sendEmail(to: string, subject: string, text: string): Promise<{ success: boolean; }> {
+  async sendEmail(to: string, subject: string, text: string): Promise<void> {
+    this.loggerService.log('sendEmail {helper}');
     const mailOptions = {
-      from: `"Hashir Malik" <${this.configService.get<string>('EMAIL_USER') ?? ''}>`,
+      from: `"${this.configService.get<string>('EMAIL_NAME')}" <${this.configService.get<string>('EMAIL_USER')}>`,
       to,
       subject,
       text,
     };
     await this.transporter.sendMail(mailOptions);
-    return { success: true }
   }
 
   generateOtp(): string {
-    const otp = speakeasy.totp({
+    this.loggerService.log('generateOtp {helper}');
+    return speakeasy.totp({
       secret: this.secret,
       encoding: 'base32',
+      digits: 4,
       step: 60,
-    });  
-    return otp;
-  }
-
-  verifyOtp(enteredOtp: string): boolean {
-    return speakeasy.totp.verify({
-      secret: this.secret,
-      encoding: 'base32',
-      token: enteredOtp,
-      step: 60,
+      window: 1
     });
   }
 
+  verifyOtp(enteredOtp: string): void {
+    this.loggerService.log('verifyOtp {helper}');
+    const isOtpValid = speakeasy.totp.verify({
+      secret: this.secret,
+      encoding: 'base32',
+      token: enteredOtp,
+      digits: 4,
+      step: 60,
+      window: 1
+    });
+    if ( !isOtpValid ) {
+      throw new BadRequestException('Invalid OTP');
+    }
+  }
+
   async hashPassword(password: string): Promise<string> {
+    this.loggerService.log('hashPassword {helper}');
     const saltRounds = 14;
     return hash(password, saltRounds);
   }
 
   async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
-    return compare(plainPassword, hashedPassword);  
+    this.loggerService.log('comparePasswords {helper}');
+    const comparePasswords = compare(plainPassword, hashedPassword);
+    if (!comparePasswords) {
+      throw new UnauthorizedException('Invalid username or password');
+    }
+    return comparePasswords;
   }
 }
