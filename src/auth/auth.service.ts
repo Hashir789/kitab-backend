@@ -6,6 +6,7 @@ import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'src/logger/logger.service';
 import { UsersService } from 'src/users/users.service';
+import { RedisService } from 'src/redis/redis.service';
 import { SignupVerifyOtpDto } from './dto/signup-verify-otp.dto';
 import { SignupRequestOtpDto } from './dto/signup-request-otp.dto';
 import { Injectable, UnauthorizedException, BadRequestException, HttpException } from '@nestjs/common';
@@ -14,15 +15,14 @@ import { Injectable, UnauthorizedException, BadRequestException, HttpException }
 export class AuthService {
 
   private readonly transporter: nodemailer.Transporter;
-  private readonly secret: string;
 
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly usersService: UsersService,
-    private readonly loggerService: Logger
+    private readonly loggerService: Logger,
+    private readonly redisService: RedisService,
   ) {
-    this.secret = speakeasy.generateSecret({ length: 20 }).base32;
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -38,13 +38,13 @@ export class AuthService {
     try {
       this.loggerService.log('signupRequestOtp {controller}');
       await this.usersService.validateEmailAvailability(body.email)
-      const otp = this.generateOtp();
+      const otp = await this.generateOtp(body.email);
       await this.sendEmail(
         body.email,
         'OTP Code for Kitaab',
         `Thank you for signing up. Your OTP code is ${otp}`
       );
-      return { message: 'OTP sent successfully', statusCode: 200 };
+      return { statusCode: 200, message: 'OTP sent successfully' };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -54,15 +54,15 @@ export class AuthService {
   async signupVerifyOtp(body: SignupVerifyOtpDto): Promise<{ message: string; accessToken: string; statusCode: number }> {
     try {
       this.loggerService.log('signupVerifyOtp {controller}');
-      this.verifyOtp(body.otp);
+      let secret = await this.verifyOtp(body.email, body.otp);
       const hashedPassword = await this.hashPassword(body.password);
-      const userInstance = await this.usersService.createUser(body.name, body.email, hashedPassword)
+      const userInstance = await this.usersService.createUser(body.name, body.email, hashedPassword, secret);
       const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY');
       const accessToken = this.jwtService.sign(
         { id: userInstance.id, name: userInstance.name, email: userInstance.email },
         { privateKey, algorithm: 'RS256' }
       );
-      return { accessToken, message: 'User registered successfully', statusCode: 201 };  
+      return { accessToken, statusCode: 201, message: 'User registered successfully' };  
     } catch (error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -79,7 +79,7 @@ export class AuthService {
         { id: userInstance.id, name: userInstance.name, email: userInstance.email },
         { privateKey, algorithm: 'RS256' }
       );
-      return { accessToken, message: 'User logged in successfully', statusCode: 200 };
+      return { accessToken, statusCode: 200, message: 'User logged in successfully' };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -99,10 +99,12 @@ export class AuthService {
     await this.transporter.sendMail(mailOptions);
   }
 
-  generateOtp(): string {
+  async generateOtp(email: string): Promise<string> {
     this.loggerService.log('generateOtp {helper}');
+    let secret = speakeasy.generateSecret({ length: 20 }).base32;
+    await this.redisService.set(`secret:${email}`, secret)
     return speakeasy.totp({
-      secret: this.secret,
+      secret: secret,
       encoding: 'base32',
       digits: 4,
       step: 60,
@@ -110,10 +112,11 @@ export class AuthService {
     });
   }
 
-  verifyOtp(enteredOtp: string): void {
+  async verifyOtp(email: string, enteredOtp: string): Promise<string> {
     this.loggerService.log('verifyOtp {helper}');
+    let secret = await this.redisService.get(`secret:${email}`);
     const isOtpValid = speakeasy.totp.verify({
-      secret: this.secret,
+      secret: secret,
       encoding: 'base32',
       token: enteredOtp,
       digits: 4,
@@ -123,6 +126,7 @@ export class AuthService {
     if ( !isOtpValid ) {
       throw new BadRequestException('Invalid OTP');
     }
+    return secret;
   }
 
   async hashPassword(password: string): Promise<string> {

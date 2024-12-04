@@ -21,11 +21,11 @@ export class UsersService {
     }
   }
 
-  async createUser(name: string, email: string, password: string): Promise<{ id: number; name: string, email: string; }> {
+  async createUser(name: string, email: string, password: string, secret: string): Promise<{ id: number; name: string, email: string; }> {
     this.loggerService.log('createUser {query}');
     const result : { id: number; name: string, email: string; }[] = await this.postgresService.query(`
-      INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email;`,
-      [ name, email, password ]
+      INSERT INTO users (name, email, password, secret) VALUES ($1, $2, $3, $4) RETURNING id, name, email;`,
+      [ name, email, password, secret ]
     );
     if (result.length !== 1) {
       throw new BadRequestException('Failed to register user')
