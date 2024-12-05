@@ -27,7 +27,8 @@ export class PostgresService implements  OnModuleInit, OnModuleDestroy {
         id SERIAL PRIMARY KEY,
         name VARCHAR(15),
         email VARCHAR(40) UNIQUE NOT NULL,
-        password VARCHAR(70) NOT NULL
+        password VARCHAR(70) NOT NULL,
+        secret VARCHAR(32) NOT NULL
       );`
     );
   }
