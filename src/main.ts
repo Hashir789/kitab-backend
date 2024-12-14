@@ -16,7 +16,8 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true
+      forbidNonWhitelisted: true,
+      transform: true
     }),
   );
   app.useGlobalGuards( new JwtAuthGuard(app.get(JwtService), app.get(ConfigService), logger) );

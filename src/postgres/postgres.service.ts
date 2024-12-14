@@ -1,10 +1,10 @@
 import { Pool } from 'pg';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'src/logger/logger.service';
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 
 @Injectable()
-export class PostgresService implements  OnModuleInit, OnModuleDestroy {
+export class PostgresService implements OnModuleDestroy {
   private pool: Pool;
 
   constructor(
@@ -18,19 +18,6 @@ export class PostgresService implements  OnModuleInit, OnModuleDestroy {
       password: this.configService.get<string>('POSTGRES_PASSWORD'),
       port: this.configService.get<number>('POSTGRES_PORT') ?? 5432
     });
-  }
-
-  async onModuleInit() : Promise<void> {
-    this.loggerService.log('postgresql {config}');
-    await this.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(15),
-        email VARCHAR(40) UNIQUE NOT NULL,
-        password VARCHAR(70) NOT NULL,
-        secret VARCHAR(32) NOT NULL
-      );`
-    );
   }
 
   private formatQuery(text: string, params?: unknown[]): string {
