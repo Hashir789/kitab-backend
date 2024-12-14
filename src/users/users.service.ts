@@ -10,17 +10,6 @@ export class UsersService {
     private readonly loggerService: Logger
   ) {}
 
-  async validateEmailAvailability(email: string): Promise<void> {
-    this.loggerService.log('checkIfUserWithEmailExists {query}');
-    const result : { email: string }[] = await this.postgresService.query(
-      `SELECT email FROM users WHERE email = $1`,
-      [email],
-    );
-    if (result.length > 0) {
-      throw new ConflictException('User with the given email already exists');
-    }
-  }
-
   async createUser(name: string, email: string, password: string, secret: string): Promise<{ id: number; name: string, email: string; }> {
     this.loggerService.log('createUser {query}');
     const result : { id: number; name: string, email: string; }[] = await this.postgresService.query(`

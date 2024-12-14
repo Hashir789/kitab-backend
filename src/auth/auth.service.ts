@@ -9,7 +9,9 @@ import { UsersService } from 'src/users/users.service';
 import { RedisService } from 'src/redis/redis.service';
 import { SignupVerifyOtpDto } from './dto/signup-verify-otp.dto';
 import { SignupRequestOtpDto } from './dto/signup-request-otp.dto';
-import { Injectable, UnauthorizedException, BadRequestException, HttpException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, HttpException, ConflictException } from '@nestjs/common';
+import { isEmailAvailableDto } from './dto/is-email-available.dto';
+import { PostgresService } from 'src/postgres/postgres.service';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +24,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly loggerService: Logger,
     private readonly redisService: RedisService,
+    private readonly postgresService: PostgresService
   ) {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -34,10 +37,26 @@ export class AuthService {
 
   // Controller functions
 
+  async isEmailAvailable(query: isEmailAvailableDto): Promise<{ available: boolean, statusCode: number; message: string }> {
+    try {
+      this.loggerService.log('isEmailAvailable {controller}');
+      const result : { email: string }[] = await this.postgresService.query(
+        `SELECT email FROM users WHERE email = $1`,
+        [query.email],
+      );
+      if (result.length > 0) {
+        return { available: false, statusCode: 200, message: "Email is already taken" };
+      }
+      return { available: true, statusCode: 200, message: "Email is available for use" };  
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);    
+    }
+  }
+
   async signupRequestOtp(body: SignupRequestOtpDto): Promise<{ message: string; statusCode: number }> {
     try {
       this.loggerService.log('signupRequestOtp {controller}');
-      await this.usersService.validateEmailAvailability(body.email)
       const otp = await this.generateOtp(body.email);
       await this.sendEmail(
         body.email,

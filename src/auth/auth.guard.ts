@@ -9,6 +9,7 @@ export class JwtAuthGuard implements CanActivate {
 
   private readonly excludedUrls: string[] = [
     '/api/health-check',
+    '/api/auth/email/available',
     '/api/auth/signup/request-otp',
     '/api/auth/signup/verify-otp',
     '/api/auth/login'
@@ -23,17 +24,25 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     this.loggerService.log('canActivate {guard}');
     const request: AuthenticatedRequest = context.switchToHttp().getRequest();
-    const authHeader: string | undefined = request.headers['authorization'];
-    if (this.excludedUrls.includes(request.url)) {
-      return true;
+  
+    // Extract the base URL path without query parameters
+    const baseUrl = request.url.split('?')[0];
+  
+    if (this.excludedUrls.includes(baseUrl)) {
+      return true; // Skip JWT verification for excluded URLs
     }
+  
+    const authHeader: string | undefined = request.headers['authorization'];
+  
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new UnauthorizedException('Authorization header not found or malformed');
     }
+  
     const token: string = authHeader.split(' ')[1];
+  
     try {
       const publicKey: string = this.configService.get<string>('JWT_PUBLIC_KEY') ?? '';
-      const payload : { 
+      const payload: { 
         id: string,
         name: string,
         email: string
@@ -41,10 +50,11 @@ export class JwtAuthGuard implements CanActivate {
         publicKey,
         algorithms: ['RS256'],
       });
-      request.user = payload;
+  
+      request.user = payload; // Attach user payload to the request
       return true;
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');
     }
-  }
+  }  
 }
