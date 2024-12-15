@@ -1,6 +1,6 @@
 import { Logger } from 'src/logger/logger.service';
 import { PostgresService } from 'src/postgres/postgres.service';
-import { ConflictException, BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class UsersService {

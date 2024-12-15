@@ -9,9 +9,10 @@ import { UsersService } from 'src/users/users.service';
 import { RedisService } from 'src/redis/redis.service';
 import { SignupVerifyOtpDto } from './dto/signup-verify-otp.dto';
 import { SignupRequestOtpDto } from './dto/signup-request-otp.dto';
-import { Injectable, UnauthorizedException, BadRequestException, HttpException, ConflictException } from '@nestjs/common';
-import { isEmailAvailableDto } from './dto/is-email-available.dto';
+import { Injectable, UnauthorizedException, BadRequestException, HttpException } from '@nestjs/common';
+import { IsEmailAvailableDto } from './dto/is-email-available.dto';
 import { PostgresService } from 'src/postgres/postgres.service';
+import { VerifyPasswordDto } from './dto/verify-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -37,7 +38,7 @@ export class AuthService {
 
   // Controller functions
 
-  async isEmailAvailable(query: isEmailAvailableDto): Promise<{ available: boolean, statusCode: number; message: string }> {
+  async isEmailAvailable(query: IsEmailAvailableDto): Promise<{ available: boolean, statusCode: number; message: string }> {
     try {
       this.loggerService.log('isEmailAvailable {controller}');
       const result : { email: string }[] = await this.postgresService.query(
@@ -47,7 +48,7 @@ export class AuthService {
       if (result.length > 0) {
         return { available: false, statusCode: 200, message: "Email is already taken" };
       }
-      return { available: true, statusCode: 200, message: "Email is available for use" };  
+      return { available: true, statusCode: 200, message: "Email is available for use" };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);    
@@ -102,6 +103,24 @@ export class AuthService {
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
+  async verifyPassword(request, query: VerifyPasswordDto): Promise<{ verified: boolean; statusCode: number; message: string }> {
+    try {
+      this.loggerService.log('verifyPassword {controller}');
+      const result : { password: string }[] = await this.postgresService.query(
+        `SELECT password FROM users WHERE email = $1`,
+        [request.user.email],
+      );
+      const comparison = await this.comparePasswords(query.password, result[0].password);
+      if (comparison) {
+        return { verified: true, statusCode: 200, message: "Password verified successfully" };
+      }
+      return { verified: false, statusCode: 200, message: "Incorrect password" };
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);    
     }
   }
 
