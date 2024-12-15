@@ -2,8 +2,10 @@ import { LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
 import { SignupVerifyOtpDto } from './dto/signup-verify-otp.dto';
 import { SignupRequestOtpDto } from './dto/signup-request-otp.dto';
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query } from '@nestjs/common';
-import { isEmailAvailableDto } from './dto/is-email-available.dto';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Req } from '@nestjs/common';
+import { IsEmailAvailableDto } from './dto/is-email-available.dto';
+import { VerifyPasswordDto } from './dto/verify-password.dto';
+// import { VerifyPasswordDto } from './dto/verify-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -12,7 +14,7 @@ export class AuthController {
 
   @Get('email/available')
   @HttpCode(HttpStatus.OK)
-  async isEmailAvailable(@Query() query: isEmailAvailableDto) {
+  async isEmailAvailable(@Query() query: IsEmailAvailableDto) {
     return this.authService.isEmailAvailable(query);
   }
 
@@ -32,5 +34,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: LoginDto) {
     return this.authService.login(body);
+  }
+
+  @Get('password/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifyPassword(@Req() request, @Query() query: VerifyPasswordDto) {
+    return this.authService.verifyPassword(request, query);
   }
 }

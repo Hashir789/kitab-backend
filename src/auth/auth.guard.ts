@@ -24,22 +24,15 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     this.loggerService.log('canActivate {guard}');
     const request: AuthenticatedRequest = context.switchToHttp().getRequest();
-  
-    // Extract the base URL path without query parameters
     const baseUrl = request.url.split('?')[0];
-  
     if (this.excludedUrls.includes(baseUrl)) {
-      return true; // Skip JWT verification for excluded URLs
+      return true;
     }
-  
     const authHeader: string | undefined = request.headers['authorization'];
-  
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ')) {
       throw new UnauthorizedException('Authorization header not found or malformed');
     }
-  
     const token: string = authHeader.split(' ')[1];
-  
     try {
       const publicKey: string = this.configService.get<string>('JWT_PUBLIC_KEY') ?? '';
       const payload: { 
@@ -50,8 +43,7 @@ export class JwtAuthGuard implements CanActivate {
         publicKey,
         algorithms: ['RS256'],
       });
-  
-      request.user = payload; // Attach user payload to the request
+      request.user = payload;
       return true;
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired token');
