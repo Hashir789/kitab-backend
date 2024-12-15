@@ -1,6 +1,6 @@
 import { IsNotEmpty, MinLength } from 'class-validator';
 
-export class VerifyPasswordDto {
+export class ResetPasswordDto {
 
   @IsNotEmpty()
   @MinLength(8)
