@@ -53,4 +53,10 @@ export class AuthController {
   async enable2fa(@Req() request) {
     return this.authService.enable2fa(request);
   }
+
+  @Patch('2fa/disable')
+  @HttpCode(HttpStatus.OK)
+  async disable2fa(@Req() request) {
+    return this.authService.disable2fa(request);
+  }
 }
