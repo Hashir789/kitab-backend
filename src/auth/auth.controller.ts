@@ -47,4 +47,10 @@ export class AuthController {
   async resetPassword(@Req() request, @Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(request, body);
   }
+
+  @Patch('2fa/enable')
+  @HttpCode(HttpStatus.OK)
+  async enable2fa(@Req() request) {
+    return this.authService.enable2fa(request);
+  }
 }
