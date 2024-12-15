@@ -160,6 +160,23 @@ export class AuthService {
     }
   }
 
+  async disable2fa(request): Promise<{ enable: boolean; statusCode: number; message: string }> {
+    try {
+      this.loggerService.log('enable2fa {controller}');
+      const result : { two_fa: boolean }[] = await this.postgresService.query(`
+        UPDATE users SET two_fa = false WHERE email = $1 RETURNING id;`,
+        [request.user.email],
+      );
+      if (result.length) {
+        return { enable: true, statusCode: 200, message: "2FA has been disabled successfully" };
+      }
+      return { enable: false, statusCode: 200, message: "Unable to disabled 2FA" };
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);    
+    }
+  }
+
   // Helper functions
 
   async sendEmail(to: string, subject: string, text: string): Promise<void> {
