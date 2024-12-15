@@ -7,7 +7,6 @@ import { RedisModule } from 'src/redis/redis.module';
 import { LoggerModule } from 'src/logger/logger.module';
 import { PostgresModule } from 'src/postgres/postgres.module';
 import { ConfigModule, ConfigModuleOptions } from '@nestjs/config';
-import { ProtectedController } from 'src/protected/protected.controller';
 
 @Module({
   imports: [
@@ -20,7 +19,7 @@ import { ProtectedController } from 'src/protected/protected.controller';
     RedisModule,
     UsersModule
   ],
-  controllers: [AppController, ProtectedController],
+  controllers: [AppController],
   providers: [AppService]
 })
 

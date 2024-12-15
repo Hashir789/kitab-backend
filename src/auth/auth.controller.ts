@@ -1,11 +1,11 @@
 import { LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyPasswordDto } from './dto/verify-password.dto';
 import { SignupVerifyOtpDto } from './dto/signup-verify-otp.dto';
 import { SignupRequestOtpDto } from './dto/signup-request-otp.dto';
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Req } from '@nestjs/common';
 import { IsEmailAvailableDto } from './dto/is-email-available.dto';
-import { VerifyPasswordDto } from './dto/verify-password.dto';
-// import { VerifyPasswordDto } from './dto/verify-password.dto';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Req, Patch } from '@nestjs/common';
 
 @Controller('auth')
 export class AuthController {
@@ -18,13 +18,13 @@ export class AuthController {
     return this.authService.isEmailAvailable(query);
   }
 
-  @Post('signup/request-otp')
+  @Post('signup/otp/request')
   @HttpCode(HttpStatus.OK)
   async signupRequestOtp(@Body() body: SignupRequestOtpDto) {
     return this.authService.signupRequestOtp(body);
   }
 
-  @Post('signup/verify-otp')
+  @Post('signup/otp/verify')
   @HttpCode(HttpStatus.CREATED)
   async signupVerifyOtp(@Body() body: SignupVerifyOtpDto) {
     return this.authService.signupVerifyOtp(body);
@@ -36,9 +36,15 @@ export class AuthController {
     return this.authService.login(body);
   }
 
-  @Get('password/verify')
+  @Post('password/verify')
   @HttpCode(HttpStatus.OK)
-  async verifyPassword(@Req() request, @Query() query: VerifyPasswordDto) {
-    return this.authService.verifyPassword(request, query);
+  async verifyPassword(@Req() request, @Body() body: VerifyPasswordDto) {
+    return this.authService.verifyPassword(request, body);
+  }
+
+  @Patch('password/reset')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Req() request, @Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(request, body);
   }
 }
