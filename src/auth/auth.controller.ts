@@ -1,5 +1,7 @@
 import { LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
+import { Toggle2FaDto } from './dto/toggle-2-fa.dto';
+import { AuthenticatedRequest } from './auth.interface';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyPasswordDto } from './dto/verify-password.dto';
 import { SignupVerifyOtpDto } from './dto/signup-verify-otp.dto';
@@ -38,25 +40,19 @@ export class AuthController {
 
   @Post('password/verify')
   @HttpCode(HttpStatus.OK)
-  async verifyPassword(@Req() request, @Body() body: VerifyPasswordDto) {
+  async verifyPassword(@Req() request: AuthenticatedRequest, @Body() body: VerifyPasswordDto) {
     return this.authService.verifyPassword(request, body);
   }
 
   @Patch('password/reset')
   @HttpCode(HttpStatus.OK)
-  async resetPassword(@Req() request, @Body() body: ResetPasswordDto) {
+  async resetPassword(@Req() request: AuthenticatedRequest, @Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(request, body);
   }
 
-  @Patch('2fa/enable')
+  @Patch('2fa/toggle')
   @HttpCode(HttpStatus.OK)
-  async enable2fa(@Req() request) {
-    return this.authService.enable2fa(request);
-  }
-
-  @Patch('2fa/disable')
-  @HttpCode(HttpStatus.OK)
-  async disable2fa(@Req() request) {
-    return this.authService.disable2fa(request);
+  async toggle2fa(@Req() request: AuthenticatedRequest, @Body() body: Toggle2FaDto) {
+    return this.authService.toggle2fa(request, body);
   }
 }

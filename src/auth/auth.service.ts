@@ -5,8 +5,10 @@ import * as nodemailer from 'nodemailer';
 import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'src/logger/logger.service';
+import { Toggle2FaDto } from './dto/toggle-2-fa.dto';
 import { UsersService } from 'src/users/users.service';
 import { RedisService } from 'src/redis/redis.service';
+import { AuthenticatedRequest } from './auth.interface';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyPasswordDto } from './dto/verify-password.dto';
 import { PostgresService } from 'src/postgres/postgres.service';
@@ -25,8 +27,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly usersService: UsersService,
     private readonly loggerService: Logger,
-    private readonly redisService: RedisService,
-    private readonly postgresService: PostgresService
+    private readonly redisService: RedisService
   ) {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -41,30 +42,44 @@ export class AuthService {
 
   async isEmailAvailable(query: IsEmailAvailableDto): Promise<{ available: boolean, statusCode: number; message: string }> {
     try {
+      const { email } = query;
       this.loggerService.log('isEmailAvailable {controller}');
-      const result : { email: string }[] = await this.postgresService.query(`
-        SELECT email FROM users WHERE email = $1`,
-        [query.email],
-      );
-      if (result.length) {
+      const result = await this.usersService.checkEmailAvailability(email);
+      if (result)
         return { available: false, statusCode: 200, message: "Email is already taken" };
-      }
       return { available: true, statusCode: 200, message: "Email is available for use" };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
-      throw new HttpException(error.message, error.status ?? 500);    
+      throw new HttpException(error.message, error.status ?? 500);
     }
   }
 
   async signupRequestOtp(body: SignupRequestOtpDto): Promise<{ message: string; statusCode: number }> {
     try {
+      const { name, email, password } = body;
       this.loggerService.log('signupRequestOtp {controller}');
-      const otp = await this.generateOtp(body.email);
-      await this.sendEmail(
-        body.email,
-        'OTP Code for Kitaab',
-        `Thank you for signing up. Your OTP code is ${otp}`
-      );
+      const [otp, secret] = this.generateOtp();
+      const userInstance: { name: string, email: string, password: string, secret: string } = {
+        name, email, password, secret
+      }
+      const html: string = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+          <h2 style="color: #7d7dfa; text-align: center;">Your One-Time Password</h2>
+          <p>Dear ${name},</p>
+          <p>We received a request to secure your account with a One-Time Password (OTP). Please use the code below to complete your action:</p>
+          <div style="text-align: center; margin: 20px 0;">
+            <span style="font-size: 24px; font-weight: bold; color: #7d7dfa; background-color: #f9f9f9; padding: 10px 20px; border: 1px solid #ddd; border-radius: 4px;">${otp}</span>
+          </div>
+          <p><strong>Note:</strong> This OTP is valid for <strong>5 minutes</strong>. For your security, please do not share this code with anyone.</p>
+          <p>If you did not request this OTP, please contact our support team immediately.</p>
+          <p>Best regards,</p>
+          <p><strong>${this.configService.get<string>('EMAIL_NAME')}</strong></p>
+        </div>
+      `;
+      await Promise.all([
+        this.redisService.set(`secret:${email}`, JSON.stringify(userInstance)),
+        this.sendEmail(body.email, 'OTP Code for Kitab', html),
+      ]);
       return { statusCode: 200, message: 'OTP sent successfully' };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
@@ -74,16 +89,15 @@ export class AuthService {
 
   async signupVerifyOtp(body: SignupVerifyOtpDto): Promise<{ message: string; accessToken: string; statusCode: number }> {
     try {
+      const { email, otp } = body;
       this.loggerService.log('signupVerifyOtp {controller}');
-      let secret = await this.verifyOtp(body.email, body.otp);
-      const hashedPassword = await this.hashPassword(body.password);
-      const userInstance = await this.usersService.createUser(body.name, body.email, hashedPassword, secret);
+      const userInstance = await this.redisService.get(`secret:${email}`);
+      await this.verifyOtp(userInstance.secret, otp);
+      userInstance.password = await this.hashPassword(userInstance.password);
+      const newUser = await this.usersService.createUser(userInstance);
       const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY');
-      const accessToken = this.jwtService.sign(
-        { id: userInstance.id, name: userInstance.name, email: userInstance.email },
-        { privateKey, algorithm: 'RS256' }
-      );
-      return { accessToken, statusCode: 201, message: 'User registered successfully' };  
+      const accessToken = this.generateAccessToken(newUser, privateKey);
+      return { accessToken, statusCode: 201, message: 'User registered successfully' };
     } catch (error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -92,14 +106,12 @@ export class AuthService {
 
   async login(body: LoginDto): Promise<{ message: string; accessToken: string; statusCode: number }> {
     try{
+      const { email, password } = body;
       this.loggerService.log('login {controller}');
-      const userInstance = await this.usersService.getUser(body.email);
-      await this.comparePasswords(body.password, userInstance.password);
+      const userInstance = await this.usersService.getUser(email);
+      await this.comparePasswords(password, userInstance.password);
       const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY');
-      const accessToken = this.jwtService.sign(
-        { id: userInstance.id, name: userInstance.name, email: userInstance.email },
-        { privateKey, algorithm: 'RS256' }
-      );
+      const accessToken = this.generateAccessToken(userInstance, privateKey);
       return { accessToken, statusCode: 200, message: 'User logged in successfully' };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
@@ -107,70 +119,45 @@ export class AuthService {
     }
   }
 
-  async verifyPassword(request, body: VerifyPasswordDto): Promise<{ verified: boolean; statusCode: number; message: string }> {
+  async verifyPassword(request: AuthenticatedRequest, body: VerifyPasswordDto): Promise<{ verified: boolean; statusCode: number; message: string }> {
     try {
+      const { password } = body;
+      const { email } = request.user;
       this.loggerService.log('verifyPassword {controller}');
-      const result : { password: string }[] = await this.postgresService.query(`
-        SELECT password FROM users WHERE email = $1`,
-        [request.user.email],
-      );
-      const comparison = await this.comparePasswords(body.password, result[0].password);
-      if (comparison) {
+      const userPassword: string = await this.usersService.getPasswordByEmail(email);
+      const comparison = await this.comparePasswords(password, userPassword);
+      if (comparison)
         return { verified: true, statusCode: 200, message: "Password verified successfully" };
-      }
-      return { verified: false, statusCode: 200, message: "Incorrect password" };
+      throw new BadRequestException('Invalid email or credentials');
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);    
     }
   }
 
-  async resetPassword(request, body: ResetPasswordDto): Promise<{ reset: boolean; statusCode: number; message: string }> {
+  async resetPassword(request: AuthenticatedRequest, body: ResetPasswordDto): Promise<{ reset: boolean; statusCode: number; message: string }> {
     try {
+      const { email } = request.user;
+      const { password } = body;
       this.loggerService.log('resetPassword {controller}');
-      const hashedPassword = await this.hashPassword(body.password);
-      const result : { id: number }[] = await this.postgresService.query(`
-        UPDATE users SET password = $2 WHERE email = $1 RETURNING id;`,
-        [request.user.email, hashedPassword],
-      );
-      if (result.length) {
-        return { reset: true, statusCode: 200, message: "Password has been reset successfully" };
-      }
-      return { reset: false, statusCode: 200, message: "Unable to reset password" };
+      const hashedPassword = await this.hashPassword(password);
+      await this.usersService.updatePassword(email, hashedPassword);
+      return { reset: true, statusCode: 200, message: "Password has been reset successfully" };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);    
     }
   }
 
-  async enable2fa(request): Promise<{ enable: boolean; statusCode: number; message: string }> {
+  async toggle2fa(request: AuthenticatedRequest, body: Toggle2FaDto): Promise<{ toggle: boolean; statusCode: number; message: string }> {
     try {
-      this.loggerService.log('enable2fa {controller}');
-      const result : { two_fa: boolean }[] = await this.postgresService.query(`
-        UPDATE users SET two_fa = true WHERE email = $1 RETURNING id;`,
-        [request.user.email],
-      );
-      if (result.length) {
-        return { enable: true, statusCode: 200, message: "2FA has been enabled successfully" };
-      }
-      return { enable: false, statusCode: 200, message: "Unable to enable 2FA" };
-    } catch(error) {
-      this.loggerService.error(error.message, error.status ?? 500);
-      throw new HttpException(error.message, error.status ?? 500);    
-    }
-  }
-
-  async disable2fa(request): Promise<{ enable: boolean; statusCode: number; message: string }> {
-    try {
-      this.loggerService.log('enable2fa {controller}');
-      const result : { two_fa: boolean }[] = await this.postgresService.query(`
-        UPDATE users SET two_fa = false WHERE email = $1 RETURNING id;`,
-        [request.user.email],
-      );
-      if (result.length) {
-        return { enable: true, statusCode: 200, message: "2FA has been disabled successfully" };
-      }
-      return { enable: false, statusCode: 200, message: "Unable to disabled 2FA" };
+      this.loggerService.log('toggle2fa {controller}');
+      const { email, two_fa } = request.user;
+      const { toggle } = body;
+      if (toggle === two_fa) 
+        return { toggle, statusCode: 200, message: `2FA has been ${ toggle ? 'enabled' : 'disabled' } successfully` };
+      await this.usersService.update2fa(email, toggle);
+      return { toggle, statusCode: 200, message: `2FA has been ${ toggle ? 'enabled' : 'disabled' } successfully` };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);    
@@ -179,37 +166,36 @@ export class AuthService {
 
   // Helper functions
 
-  async sendEmail(to: string, subject: string, text: string): Promise<void> {
+  async sendEmail(to: string, subject: string, html: string): Promise<void> {
     this.loggerService.log('sendEmail {helper}');
     const mailOptions = {
       from: `"${this.configService.get<string>('EMAIL_NAME')}" <${this.configService.get<string>('EMAIL_USER')}>`,
       to,
       subject,
-      text,
+      html
     };
     await this.transporter.sendMail(mailOptions);
   }
 
-  async generateOtp(email: string): Promise<string> {
+  generateOtp(): [string, string] {
     this.loggerService.log('generateOtp {helper}');
     let secret = speakeasy.generateSecret({ length: 20 }).base32;
-    await this.redisService.set(`secret:${email}`, secret)
-    return speakeasy.totp({
+    let otp = speakeasy.totp({
       secret: secret,
       encoding: 'base32',
       digits: 4,
       step: 60,
       window: 1
     });
+    return [otp, secret]
   }
 
-  async verifyOtp(email: string, enteredOtp: string): Promise<string> {
+  async verifyOtp(secret: string, otp: string): Promise<void> {
     this.loggerService.log('verifyOtp {helper}');
-    let secret = await this.redisService.get(`secret:${email}`);
     const isOtpValid = speakeasy.totp.verify({
       secret: secret,
       encoding: 'base32',
-      token: enteredOtp,
+      token: otp,
       digits: 4,
       step: 60,
       window: 1
@@ -217,13 +203,19 @@ export class AuthService {
     if ( !isOtpValid ) {
       throw new BadRequestException('Invalid OTP');
     }
-    return secret;
   }
 
   async hashPassword(password: string): Promise<string> {
     this.loggerService.log('hashPassword {helper}');
     const saltRounds = 14;
     return hash(password, saltRounds);
+  }
+
+  generateAccessToken(newUser: { id: number; name: string; email: string }, privateKey: string): string {
+    return this.jwtService.sign(
+      { id: newUser.id, name: newUser.name, email: newUser.email },
+      { privateKey, algorithm: 'RS256' }
+    );
   }
 
   async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
