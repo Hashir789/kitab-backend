@@ -7,6 +7,7 @@ import { VerifyPasswordDto } from './dto/verify-password.dto';
 import { SignupVerifyOtpDto } from './dto/signup-verify-otp.dto';
 import { SignupRequestOtpDto } from './dto/signup-request-otp.dto';
 import { IsEmailAvailableDto } from './dto/is-email-available.dto';
+import { sendPasswordResetOtpDto } from './dto/send-password-reset-otp.dto';
 import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Req, Patch } from '@nestjs/common';
 
 @Controller('auth')
@@ -54,5 +55,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async toggle2fa(@Req() request: AuthenticatedRequest, @Body() body: Toggle2FaDto) {
     return this.authService.toggle2fa(request, body);
+  }
+
+  @Post('email/send/password/otp')
+  @HttpCode(HttpStatus.OK)
+  async sendPasswordResetOtp(@Query() query: sendPasswordResetOtpDto) {
+    return this.authService.sendPasswordResetOtp(query);
   }
 }
