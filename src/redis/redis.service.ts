@@ -20,7 +20,7 @@ export class RedisService {
     await this.redis.set(key, value, { ex: ttlSeconds });
   }
 
-  async get(key: string): Promise<{ name: string, email: string, password: string, secret: string } | null> {
+  async get(key: string): Promise<any> {
     this.loggerService.log('get {query}');
     return this.redis.get(key);
   }

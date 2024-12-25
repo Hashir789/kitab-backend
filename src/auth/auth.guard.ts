@@ -13,7 +13,8 @@ export class JwtAuthGuard implements CanActivate {
     '/api/auth/signup/otp/request',
     '/api/auth/signup/otp/verify',
     '/api/auth/login',
-    '/api/auth/password/otp'
+    '/api/auth/email/send/password/otp',
+    '/api/auth/otp/verify'
   ];
   
   constructor(
