@@ -21,10 +21,21 @@ export class UsersService {
     return result[0];
   }
 
-  async getUser(email: string): Promise<{ id: number; name: string, email: string; password: string; }> {
+  async getUser(email: string): Promise<{ id: number; name: string, email: string; password: string; two_fa: boolean; join_date: Date }> {
     this.loggerService.log('createUser {query}');
-    const result : { id: number; name: string, email: string; password: string; }[] = await this.postgresService.query(`
-      SELECT * FROM users WHERE email = $1`,
+    const result : { id: number; name: string, email: string; password: string; two_fa: boolean; join_date: Date }[] = await this.postgresService.query(`
+      SELECT id, name, email, password, two_fa, join_date FROM users WHERE email = $1`,
+      [ email ]
+    )
+    if (!result.length)
+      throw new NotFoundException('Invalid email or credentials');
+    return result[0];
+  }
+
+  async getUserSecret(email: string): Promise<{ name: string; secret: string; }> {
+    this.loggerService.log('createUser {query}');
+    const result : { name: string; secret: string; }[] = await this.postgresService.query(`
+      SELECT name, secret FROM users WHERE email = $1`,
       [ email ]
     )
     if (!result.length)
@@ -61,6 +72,7 @@ export class UsersService {
     if (!result.length)
       throw new NotFoundException('Invalid email or credentials');
   }
+
   async update2fa(email: String, toggle: boolean): Promise<void> {
     this.loggerService.log('update2fa {query}');
     const result: { two_fa: boolean }[] = await this.postgresService.query(`
