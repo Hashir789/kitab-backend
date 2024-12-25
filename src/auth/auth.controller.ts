@@ -1,5 +1,6 @@
 import { LoginDto } from './dto/login.dto';
 import { AuthService } from './auth.service';
+import { OtpVerifyDto } from './dto/otp-verify.dto';
 import { Toggle2FaDto } from './dto/toggle-2-fa.dto';
 import { AuthenticatedRequest } from './auth.interface';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -59,7 +60,13 @@ export class AuthController {
 
   @Post('email/send/password/otp')
   @HttpCode(HttpStatus.OK)
-  async sendPasswordResetOtp(@Query() query: sendPasswordResetOtpDto) {
-    return this.authService.sendPasswordResetOtp(query);
+  async sendPasswordResetOtp(@Body() body: sendPasswordResetOtpDto) {
+    return this.authService.sendPasswordResetOtp(body);
+  }
+
+  @Post('otp/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifiedOtp(@Body() body: OtpVerifyDto) {
+    return this.authService.verifiedOtp(body);
   }
 }

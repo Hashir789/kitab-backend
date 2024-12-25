@@ -5,6 +5,7 @@ import * as nodemailer from 'nodemailer';
 import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'src/logger/logger.service';
+import { OtpVerifyDto } from './dto/otp-verify.dto';
 import { Toggle2FaDto } from './dto/toggle-2-fa.dto';
 import { UsersService } from 'src/users/users.service';
 import { RedisService } from 'src/redis/redis.service';
@@ -16,6 +17,7 @@ import { SignupRequestOtpDto } from './dto/signup-request-otp.dto';
 import { IsEmailAvailableDto } from './dto/is-email-available.dto';
 import { sendPasswordResetOtpDto } from './dto/send-password-reset-otp.dto';
 import { Injectable, UnauthorizedException, BadRequestException, HttpException } from '@nestjs/common';
+
 @Injectable()
 export class AuthService {
 
@@ -61,20 +63,6 @@ export class AuthService {
       const userInstance: { name: string, email: string, password: string, secret: string } = {
         name, email, password, secret
       }
-      const html: string = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-          <h2 style="color: #7d7dfa; text-align: center;">Your One-Time Password</h2>
-          <p>Dear ${name},</p>
-          <p>We received a request to secure your account with a One-Time Password (OTP). Please use the code below to complete your action:</p>
-          <div style="text-align: center; margin: 20px 0;">
-            <span style="font-size: 24px; font-weight: bold; color: #7d7dfa; background-color: #f9f9f9; padding: 10px 20px; border: 1px solid #ddd; border-radius: 4px;">${otp}</span>
-          </div>
-          <p><strong>Note:</strong> This OTP is valid for <strong>5 minutes</strong>. For your security, please do not share this code with anyone.</p>
-          <p>If you did not request this OTP, please contact our support team immediately.</p>
-          <p>Best regards,</p>
-          <p><strong>${this.configService.get<string>('EMAIL_NAME')}</strong></p>
-        </div>
-      `;
       await Promise.all([
         this.redisService.set(`user:${email}`, JSON.stringify(userInstance)),
         this.sendEmail(body.email, 'OTP Code for Kitab', name, otp)
@@ -163,15 +151,28 @@ export class AuthService {
     }
   }
 
-  async sendPasswordResetOtp(query: sendPasswordResetOtpDto): Promise<{ email: string; statusCode: number; message: string }> {
+  async sendPasswordResetOtp(body: sendPasswordResetOtpDto): Promise<{ email: string; statusCode: number; message: string }> {
     try {
-      const { email } = query;
+      const { email } = body;
       this.loggerService.log('sendPasswordResetOtp {controller}');
       const userInstance = await this.usersService.getUserSecret(email);
       const otp = this.generateOtpBySecret(userInstance.secret);
       await this.redisService.set(`secret:${email}`, userInstance.secret);
       this.sendEmail(email, 'OTP Code for Kitab', userInstance.name, otp);
       return { email, statusCode: 200, message: "Email has been sent successfully" };
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
+  async verifiedOtp(body: OtpVerifyDto): Promise<{ verify: boolean; statusCode: number; message: string }> {
+    try {
+      const { email, otp } = body;
+      this.loggerService.log('sendPasswordResetOtp {controller}');
+      const secret = await this.redisService.get(`secret:${email}`);
+      await this.verifyOtp(secret, otp);
+      return { verify: true, statusCode: 200, message: "Email has been sent successfully" };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
