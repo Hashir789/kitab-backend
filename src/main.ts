@@ -1,3 +1,4 @@
+import * as cors from 'cors';
 import { JwtService } from '@nestjs/jwt';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
@@ -21,6 +22,11 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.useGlobalGuards( new JwtAuthGuard(app.get(JwtService), app.get(ConfigService), logger) );
+  app.enableCors({
+    origin: 'http://127.0.0.1:5500',
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
   await app.listen(port);
 }
 

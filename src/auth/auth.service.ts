@@ -41,21 +41,21 @@ export class AuthService {
 
   // Controller functions
 
-  async isEmailAvailable(query: IsEmailAvailableDto): Promise<{ available: boolean, statusCode: number; message: string }> {
+  async isEmailAvailable(query: IsEmailAvailableDto): Promise<{ available: boolean }> {
     try {
       const { email } = query;
       this.loggerService.log('isEmailAvailable {controller}');
       const result = await this.usersService.checkEmailAvailability(email);
       if (result)
-        return { available: false, statusCode: 200, message: "Email is already taken" };
-      return { available: true, statusCode: 200, message: "Email is available for use" };
+        return { available: false };
+      return { available: true };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
     }
   }
 
-  async signupRequestOtp(body: SignupRequestOtpDto): Promise<{ message: string; statusCode: number }> {
+  async signupRequestOtp(body: SignupRequestOtpDto): Promise<void> {
     try {
       const { name, email, password } = body;
       this.loggerService.log('signupRequestOtp {controller}');
@@ -67,14 +67,13 @@ export class AuthService {
         this.redisService.set(`user:${email}`, JSON.stringify(userInstance)),
         this.sendEmail(body.email, 'OTP Code for Kitab', name, otp)
       ]);
-      return { statusCode: 200, message: 'OTP sent successfully' };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
     }
   }
 
-  async signupVerifyOtp(body: SignupVerifyOtpDto): Promise<{ message: string; accessToken: string; statusCode: number }> {
+  async signupVerifyOtp(body: SignupVerifyOtpDto): Promise<{ accessToken: string; info: Object; }> {
     try {
       const { email, otp } = body;
       this.loggerService.log('signupVerifyOtp {controller}');
@@ -84,14 +83,15 @@ export class AuthService {
       const newUser = await this.usersService.createUser(userInstance);
       const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY');
       const accessToken = this.generateAccessToken(newUser, privateKey);
-      return { accessToken, statusCode: 201, message: 'User registered successfully' };
+      userInstance.deeds = [];
+      return { accessToken, info: userInstance };
     } catch (error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
     }
   }
 
-  async login(body: LoginDto): Promise<{ message: string; accessToken: string; statusCode: number }> {
+  async login(body: LoginDto): Promise<{ accessToken: string; two_fa: boolean; info: Object; }> {
     try{
       const { email, password } = body;
       this.loggerService.log('login {controller}');
@@ -99,59 +99,53 @@ export class AuthService {
       await this.comparePasswords(password, userInstance.password);
       const privateKey = this.configService.get<string>('JWT_PRIVATE_KEY');
       const accessToken = this.generateAccessToken(userInstance, privateKey);
-      return { accessToken, statusCode: 200, message: 'User logged in successfully' };
+      return { accessToken, two_fa: userInstance.two_fa, info: !userInstance.two_fa ? await this.usersService.getUserInfo(userInstance.email) : null };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
     }
   }
 
-  async verifyPassword(request: AuthenticatedRequest, body: VerifyPasswordDto): Promise<{ verified: boolean; statusCode: number; message: string }> {
+  async verifyPassword(request: AuthenticatedRequest, body: VerifyPasswordDto): Promise<void> {
     try {
       const { password } = body;
       const { email } = request.user;
       this.loggerService.log('verifyPassword {controller}');
       const userPassword: string = await this.usersService.getPasswordByEmail(email);
-      const comparison = await this.comparePasswords(password, userPassword);
-      if (comparison)
-        return { verified: true, statusCode: 200, message: "Password verified successfully" };
-      throw new BadRequestException('Invalid email or credentials');
+      await this.comparePasswords(password, userPassword);
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
-      throw new HttpException(error.message, error.status ?? 500);    
+      throw new HttpException(error.message, error.status ?? 500);
     }
   }
 
-  async resetPassword(request: AuthenticatedRequest, body: ResetPasswordDto): Promise<{ reset: boolean; statusCode: number; message: string }> {
+  async resetPassword(request: AuthenticatedRequest, body: ResetPasswordDto): Promise<void> {
     try {
       const { email } = request.user;
       const { password } = body;
       this.loggerService.log('resetPassword {controller}');
       const hashedPassword = await this.hashPassword(password);
       await this.usersService.updatePassword(email, hashedPassword);
-      return { reset: true, statusCode: 200, message: "Password has been reset successfully" };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);    
     }
   }
 
-  async toggle2fa(request: AuthenticatedRequest, body: Toggle2FaDto): Promise<{ toggle: boolean; statusCode: number; message: string }> {
+  async toggle2fa(request: AuthenticatedRequest, body: Toggle2FaDto): Promise<void> {
     try {
       const { email, two_fa } = request.user;
       const { toggle } = body;
       this.loggerService.log('toggle2fa {controller}');
-      if (toggle === two_fa) 
-        return { toggle, statusCode: 200, message: `2FA has been ${ toggle ? 'enabled' : 'disabled' } successfully` };
-      await this.usersService.update2fa(email, toggle);
-      return { toggle, statusCode: 200, message: `2FA has been ${ toggle ? 'enabled' : 'disabled' } successfully` };
+      if (toggle !== two_fa) 
+        await this.usersService.update2fa(email, toggle);
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);    
     }
   }
 
-  async sendPasswordResetOtp(body: sendPasswordResetOtpDto): Promise<{ email: string; statusCode: number; message: string }> {
+  async sendPasswordResetOtp(body: sendPasswordResetOtpDto): Promise<{ email: string; }> {
     try {
       const { email } = body;
       this.loggerService.log('sendPasswordResetOtp {controller}');
@@ -159,20 +153,19 @@ export class AuthService {
       const otp = this.generateOtpBySecret(userInstance.secret);
       await this.redisService.set(`secret:${email}`, userInstance.secret);
       this.sendEmail(email, 'OTP Code for Kitab', userInstance.name, otp);
-      return { email, statusCode: 200, message: "Email has been sent successfully" };
+      return { email };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
     }
   }
 
-  async verifiedOtp(body: OtpVerifyDto): Promise<{ verify: boolean; statusCode: number; message: string }> {
+  async verifiedOtp(body: OtpVerifyDto): Promise<void> {
     try {
       const { email, otp } = body;
       this.loggerService.log('sendPasswordResetOtp {controller}');
       const secret = await this.redisService.get(`secret:${email}`);
       await this.verifyOtp(secret, otp);
-      return { verify: true, statusCode: 200, message: "Email has been sent successfully" };
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -259,12 +252,11 @@ export class AuthService {
     );
   }
 
-  async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
+  async comparePasswords(plainPassword: string, hashedPassword: string): Promise<void> {
     this.loggerService.log('comparePasswords {helper}');
-    const comparePasswords = compare(plainPassword, hashedPassword);
+    const comparePasswords = await compare(plainPassword, hashedPassword);
     if (!comparePasswords) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException('Invalid email or credentials');
     }
-    return comparePasswords;
   }
 }
