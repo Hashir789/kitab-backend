@@ -23,9 +23,9 @@ export class AuthController {
   }
 
   @Post('signup/otp/request')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async signupRequestOtp(@Body() body: SignupRequestOtpDto) {
-    return this.authService.signupRequestOtp(body);
+   await this.authService.signupRequestOtp(body);
   }
 
   @Post('signup/otp/verify')
@@ -41,21 +41,21 @@ export class AuthController {
   }
 
   @Post('password/verify')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async verifyPassword(@Req() request: AuthenticatedRequest, @Body() body: VerifyPasswordDto) {
-    return this.authService.verifyPassword(request, body);
+    await this.authService.verifyPassword(request, body);
   }
 
   @Patch('password/reset')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async resetPassword(@Req() request: AuthenticatedRequest, @Body() body: ResetPasswordDto) {
-    return this.authService.resetPassword(request, body);
+    await this.authService.resetPassword(request, body);
   }
 
   @Patch('2fa/toggle')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async toggle2fa(@Req() request: AuthenticatedRequest, @Body() body: Toggle2FaDto) {
-    return this.authService.toggle2fa(request, body);
+    await this.authService.toggle2fa(request, body);
   }
 
   @Post('email/send/password/otp')
@@ -65,8 +65,8 @@ export class AuthController {
   }
 
   @Post('otp/verify')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async verifiedOtp(@Body() body: OtpVerifyDto) {
-    return this.authService.verifiedOtp(body);
+    await this.authService.verifiedOtp(body);
   }
 }

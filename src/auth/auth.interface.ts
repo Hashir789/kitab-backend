@@ -3,9 +3,9 @@ import { Request } from 'express';
 export interface AuthenticatedRequest extends Request {
   
   user?: {
-    id: String,
-    name: String,
-    email: String,
+    id: string,
+    name: string,
+    email: string,
     two_fa: Boolean,
     join_date: Date
   };
