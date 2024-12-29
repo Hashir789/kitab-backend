@@ -36,6 +36,17 @@ export class UsersService {
     }
   }
 
+  async deleteUser(request: AuthenticatedRequest): Promise<void> {
+    try {
+      const { email } = request.user;
+      this.loggerService.log('deleteUser {controller}');
+      await this.delUser(email);
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
   // Helper functions
 
   async createUser(body: { name: string, email: string, password: string, secret: string }): Promise<{ id: number; name: string, email: string; }> {
@@ -185,6 +196,16 @@ export class UsersService {
     const result: { id: number }[] = await this.postgresService.query(`
       UPDATE users SET name = $2 WHERE email = $1 RETURNING id;`,
       [email, name],
+    );
+    if (!result.length)
+      throw new NotFoundException('Invalid email or credentials');
+  }
+
+  async delUser(email: string): Promise<void> {
+    this.loggerService.log('delUser {query}');
+    const result: { id: number }[] = await this.postgresService.query(`
+      DELETE FROM users WHERE email = $1 RETURNING id;`,
+      [email],
     );
     if (!result.length)
       throw new NotFoundException('Invalid email or credentials');
