@@ -5,7 +5,6 @@ export class SignupVerifyOtpDto {
   @IsEmail()
   email: string;
 
-  @IsNotEmpty()
   @IsString()
   @Length(4, 4)
   otp: string;
