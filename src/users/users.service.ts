@@ -1,5 +1,6 @@
 import { Logger } from 'src/logger/logger.service';
 import { AuthenticatedRequest } from 'src/auth/auth.interface';
+import { UpdateUsernameDto } from './dto/update-user-name.dto';
 import { PostgresService } from 'src/postgres/postgres.service';
 import { BadRequestException, Injectable, NotFoundException, HttpException } from '@nestjs/common';
 
@@ -23,13 +24,25 @@ export class UsersService {
     }
   }
 
+  async updateName(request: AuthenticatedRequest, body: UpdateUsernameDto): Promise<void> {
+    try {
+      const { email } = request.user;
+      const { name } = body;
+      this.loggerService.log('updateName {controller}');
+      await this.updateUsername(email, name);
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
   // Helper functions
 
-  async createUser(payload: { name: string, email: string, password: string, secret: string }): Promise<{ id: number; name: string, email: string; }> {
+  async createUser(body: { name: string, email: string, password: string, secret: string }): Promise<{ id: number; name: string, email: string; }> {
     this.loggerService.log('createUser {query}');
     const result : { id: number; name: string, email: string; }[] = await this.postgresService.query(`
       INSERT INTO users (name, email, password, secret) VALUES ($1, $2, $3, $4) RETURNING id, name, email;`,
-      [ payload.name, payload.email, payload.password, payload.secret ]
+      [ body.name, body.email, body.password, body.secret ]
     );
     if (result.length !== 1)
       throw new BadRequestException('Failed to register user')
@@ -160,9 +173,19 @@ export class UsersService {
   async update2fa(email: string, toggle: boolean): Promise<void> {
     this.loggerService.log('update2fa {query}');
     const result: { two_fa: boolean }[] = await this.postgresService.query(`
-        UPDATE users SET two_fa = $2 WHERE email = $1 RETURNING id;`,
-        [email, toggle],
-      );
+      UPDATE users SET two_fa = $2 WHERE email = $1 RETURNING id;`,
+      [email, toggle],
+    );
+    if (!result.length)
+      throw new NotFoundException('Invalid email or credentials');
+  }
+
+  async updateUsername(email: string, name: string): Promise<void> {
+    this.loggerService.log('update2fa {query}');
+    const result: { id: number }[] = await this.postgresService.query(`
+      UPDATE users SET name = $2 WHERE email = $1 RETURNING id;`,
+      [email, name],
+    );
     if (!result.length)
       throw new NotFoundException('Invalid email or credentials');
   }
