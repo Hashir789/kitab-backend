@@ -1,4 +1,3 @@
-import * as cors from 'cors';
 import { JwtService } from '@nestjs/jwt';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';

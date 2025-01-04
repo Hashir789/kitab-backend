@@ -12,6 +12,8 @@ export class UsersService {
     private readonly loggerService: Logger
   ) {}
 
+  // Controller functions
+
   async userInfo(request: AuthenticatedRequest): Promise<{ info: Object }> {
     try {
       const { email } = request.user;
@@ -71,9 +73,9 @@ export class UsersService {
     return result[0];
   }
 
-  async getUserInfo(email: string): Promise<{ id: number; name: string, email: string; two_fa: boolean; join_date: Date, deeds: [] }> {
+  async getUserInfo(email: string): Promise<{ id: number; name: string, email: string; two_fa: boolean; join_date: Date, deeds: Object }> {
     this.loggerService.log('getUserInfo {query}');
-    const result : { user_info: { id: number; name: string, email: string; two_fa: boolean; join_date: Date, deeds: [] } }[] = await this.postgresService.query(`
+    const result : { user_info: { id: number; name: string, email: string; two_fa: boolean; join_date: Date, deeds: Object } }[] = await this.postgresService.query(`
       WITH items_agg AS (
         SELECT
           i.deed_id,
