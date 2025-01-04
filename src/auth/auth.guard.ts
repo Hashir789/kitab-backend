@@ -37,7 +37,7 @@ export class JwtAuthGuard implements CanActivate {
     const token: string = authHeader.split(' ')[1];
     try {
       const publicKey: string = this.configService.get<string>('JWT_PUBLIC_KEY') ?? '';
-      const payload: { id: string, name: string, email: string, two_fa: boolean, join_date: Date } = await this.jwtService.verifyAsync(token, {
+      const payload: { id: number, name: string, email: string, two_fa: boolean, join_date: Date } = await this.jwtService.verifyAsync(token, {
         publicKey,
         algorithms: ['RS256'],
       });

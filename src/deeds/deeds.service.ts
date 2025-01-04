@@ -1,8 +1,9 @@
 import { Logger } from 'src/logger/logger.service';
-import { DeedsCreateDto, ScaleDto, ItemDto } from './dto/deed-create.dto';
-import { Injectable, HttpException, NotFoundException } from '@nestjs/common';
+import { DeedHideDto } from './dto/deed-hide.dto';
 import { AuthenticatedRequest } from 'src/auth/auth.interface';
 import { PostgresService } from 'src/postgres/postgres.service';
+import { DeedCreateDto, ScaleDto, ItemDto } from './dto/deed-create.dto';
+import { Injectable, HttpException, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class DeedsService {
@@ -12,7 +13,7 @@ export class DeedsService {
     private readonly loggerService: Logger
   ) {}
 
-  async createDeed(request: AuthenticatedRequest, body: DeedsCreateDto): Promise<{ 
+  async createDeed(request: AuthenticatedRequest, body: DeedCreateDto): Promise<{ 
     id: number; 
     name: string; 
     color: string; 
@@ -45,9 +46,21 @@ export class DeedsService {
     }
   }
   
+  async hideDeed(request: AuthenticatedRequest, body: DeedHideDto): Promise<void> {
+    try {
+      const { id: user_id } = request.user;
+      const { id, hide } = body;
+      this.loggerService.log('createDeeds {controller}');
+      await this.hideDeedQuery(id, user_id, hide);
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
   // helper function
 
-  async createDeedQuery(email: string, name: string, color: string, hasanaat: boolean, hidden: boolean, scale: ScaleDto[] | string, items: {}): Promise<{ 
+  async createDeedQuery(email: string, name: string, color: string, hasanaat: boolean, hidden: boolean, scale: ScaleDto[] | string, items: ItemDto[]): Promise<{ 
     id: number; 
     name: string; 
     color: string; 
@@ -155,4 +168,14 @@ export class DeedsService {
     return result[0].deed;
   }
 
+  async hideDeedQuery(id: number, user_id: number, hide: boolean): Promise<void> {
+    this.loggerService.log('createDeedQuery {query}');
+    const result: { id: number }[] = await this.postgresService.query(`
+        UPDATE deeds SET hidden = $3 WHERE user_id = $2 AND id = $1 RETURNING id;
+      `,
+      [id, user_id, hide]
+    );
+    if (!result.length)
+      throw new NotFoundException('Invalid email or credentials');
+  }
 }
