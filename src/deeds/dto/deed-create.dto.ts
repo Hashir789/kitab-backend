@@ -33,7 +33,7 @@ export class ScaleDto {
 
 }
 
-export class DeedsCreateDto {
+export class DeedCreateDto {
 
   @IsString()
   @IsNotEmpty()
