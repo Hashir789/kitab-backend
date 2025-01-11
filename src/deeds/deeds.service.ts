@@ -1,5 +1,6 @@
-import { Logger } from 'src/logger/logger.service';
 import { DeedHideDto } from './dto/deed-hide.dto';
+import { Logger } from 'src/logger/logger.service';
+import { DeedDeleteDto } from './dto/deed-delete.dto';
 import { AuthenticatedRequest } from 'src/auth/auth.interface';
 import { PostgresService } from 'src/postgres/postgres.service';
 import { DeedCreateDto, ScaleDto, ItemDto } from './dto/deed-create.dto';
@@ -52,6 +53,18 @@ export class DeedsService {
       const { id, hide } = body;
       this.loggerService.log('createDeeds {controller}');
       await this.hideDeedQuery(id, user_id, hide);
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
+  async deleteDeed(request: AuthenticatedRequest, body: DeedDeleteDto): Promise<void> {
+    try {
+      const { id: user_id } = request.user;
+      const { id } = body;
+      this.loggerService.log('deleteDeeds {controller}');
+      await this.deleteDeedQuery(id, user_id);
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -177,5 +190,16 @@ export class DeedsService {
     );
     if (!result.length)
       throw new NotFoundException('Invalid email or credentials');
+  }
+
+  async deleteDeedQuery(id: number, user_id: number): Promise<void> {
+    this.loggerService.log('createDeedQuery {query}');
+    const result: { id: number }[] = await this.postgresService.query(`
+        DELETE FROM deeds where id = $1 AND user_id = $2 RETURNING id;
+      `,
+      [id, user_id]
+    );
+    if (!result.length)
+      throw new NotFoundException('Deed not found');
   }
 }
