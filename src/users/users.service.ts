@@ -210,6 +210,6 @@ export class UsersService {
       [email],
     );
     if (!result.length)
-      throw new NotFoundException('Invalid email or credentials');
+      throw new NotFoundException('User not found');
   }
 }
