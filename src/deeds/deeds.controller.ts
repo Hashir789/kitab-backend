@@ -1,9 +1,10 @@
 import { DeedsService } from './deeds.service';
 import { DeedHideDto } from './dto/deed-hide.dto';
 import { DeedCreateDto } from './dto/deed-create.dto';
+import { DeedUpdateDto } from './dto/deed-update.dto';
 import { DeedDeleteDto } from './dto/deed-delete.dto';
 import { AuthenticatedRequest } from 'src/auth/auth.interface';
-import { Controller, HttpCode, HttpStatus, Req, Body, Post, Delete } from '@nestjs/common';
+import { Controller, HttpCode, HttpStatus, Req, Body, Post, Delete, Patch } from '@nestjs/common';
 
 @Controller('deed')
 export class DeedsController {
@@ -20,6 +21,12 @@ export class DeedsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async hideDeed(@Req() request: AuthenticatedRequest, @Body() body: DeedHideDto) {
     await this.deedsService.hideDeed(request, body);
+  }
+
+  @Patch('update')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async updateDeed(@Req() request: AuthenticatedRequest, @Body() body: DeedUpdateDto) {
+    await this.deedsService.updateDeed(request, body);
   }
 
   @Delete('delete')

@@ -1,5 +1,6 @@
 import { DeedHideDto } from './dto/deed-hide.dto';
 import { Logger } from 'src/logger/logger.service';
+import { DeedUpdateDto } from './dto/deed-update.dto';
 import { DeedDeleteDto } from './dto/deed-delete.dto';
 import { AuthenticatedRequest } from 'src/auth/auth.interface';
 import { PostgresService } from 'src/postgres/postgres.service';
@@ -51,8 +52,20 @@ export class DeedsService {
     try {
       const { id: user_id } = request.user;
       const { id, hide } = body;
-      this.loggerService.log('createDeeds {controller}');
+      this.loggerService.log('hideDeed {controller}');
       await this.hideDeedQuery(id, user_id, hide);
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
+  async updateDeed(request: AuthenticatedRequest, body: DeedUpdateDto): Promise<void> {
+    try {
+      const { id: user_id } = request.user;
+      const { id, name, color, hasanaat } = body;
+      this.loggerService.log('updateDeed {controller}');
+      await this.updateDeedQuery(id, user_id, name, color, hasanaat);
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -63,7 +76,7 @@ export class DeedsService {
     try {
       const { id: user_id } = request.user;
       const { id } = body;
-      this.loggerService.log('deleteDeeds {controller}');
+      this.loggerService.log('deleteDeed {controller}');
       await this.deleteDeedQuery(id, user_id);
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
@@ -182,7 +195,7 @@ export class DeedsService {
   }
 
   async hideDeedQuery(id: number, user_id: number, hide: boolean): Promise<void> {
-    this.loggerService.log('createDeedQuery {query}');
+    this.loggerService.log('hideDeedQuery {query}');
     const result: { id: number }[] = await this.postgresService.query(`
         UPDATE deeds SET hidden = $3 WHERE user_id = $2 AND id = $1 RETURNING id;
       `,
@@ -190,6 +203,25 @@ export class DeedsService {
     );
     if (!result.length)
       throw new NotFoundException('Invalid email or credentials');
+  }
+
+  async updateDeedQuery(id: number, user_id: number, name: string | null, color: string | null, hasanaat: boolean | null): Promise<void> {
+    this.loggerService.log('updateDeedQuery {query}');
+    if (name || color || hasanaat) {
+      const result: { id: number }[] = await this.postgresService.query(`
+        UPDATE deeds
+        SET
+          name = COALESCE($3, name),
+          color = COALESCE($4, color),
+          hasanaat = COALESCE($5, hasanaat)
+          WHERE id = $1 AND user_id = $2
+          RETURNING id;    
+        `,
+        [id, user_id, name, color, hasanaat]
+      );
+      if (!result.length)
+        throw new NotFoundException('Deed not found');
+    }
   }
 
   async deleteDeedQuery(id: number, user_id: number): Promise<void> {
