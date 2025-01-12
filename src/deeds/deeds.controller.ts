@@ -34,4 +34,10 @@ export class DeedsController {
   async deleteDeed(@Req() request: AuthenticatedRequest, @Body() body: DeedDeleteDto) {
     await this.deedsService.deleteDeed(request, body);
   }
+
+  @Delete('date/reset')
+  @HttpCode(HttpStatus.CREATED)
+  async dateReset(@Req() request: AuthenticatedRequest, @Body() body: DeedDeleteDto) {
+    return this.deedsService.dateReset(request, body);
+  }
 }

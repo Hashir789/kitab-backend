@@ -84,6 +84,19 @@ export class DeedsService {
     }
   }
 
+  async dateReset(request: AuthenticatedRequest, body: DeedDeleteDto): Promise<{ count: number }> {
+    try {
+      const { id: user_id } = request.user;
+      const { id, count_in_days } = body;
+      this.loggerService.log('dateReset {controller}');
+      const count = await this.dateResetQuery(id, user_id, count_in_days);
+      return { count }
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
   // helper function
 
   async createDeedQuery(email: string, name: string, color: string, hasanaat: boolean, hidden: boolean, scale: ScaleDto[] | string, items: ItemDto[]): Promise<{ 
@@ -233,5 +246,35 @@ export class DeedsService {
     );
     if (!result.length)
       throw new NotFoundException('Deed not found');
+  }
+
+  async dateResetQuery(id: number, user_id: number, days: number): Promise<number> {
+    this.loggerService.log('dateResetQuery {query}');
+    const result: { id: number }[] = await this.postgresService.query(`
+      WITH last_record_date AS (
+        SELECT MAX(r.date) AS max_date
+        FROM records r
+        JOIN items i ON r.item_id = i.id
+        JOIN deeds d ON i.deed_id = d.id
+        WHERE d.user_id = $1 AND d.id = $2
+      ),
+      records_to_delete AS (
+        SELECT r.id
+        FROM records r
+        JOIN items i ON r.item_id = i.id
+        JOIN deeds d ON i.deed_id = d.id
+        CROSS JOIN last_record_date lrd
+        WHERE d.user_id = $1 AND d.id = $2
+        AND r.date >= lrd.max_date - ($3 * INTERVAL '1 day')
+      )
+      DELETE FROM records
+      WHERE id IN (SELECT id FROM records_to_delete)
+      RETURNING id;
+      `,
+      [user_id, id, days]
+    );
+    if (!result.length)
+      throw new NotFoundException('No record to be deleted found');
+    return result.length;
   }
 }
