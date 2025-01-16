@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsNumber, ValidateNested } from 'class-validator';
 import { IsValidScale } from '../custom-validators/deed-create.custom-validator';
+import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsNumber, ValidateNested } from 'class-validator';
 
 export class ItemDto {
 

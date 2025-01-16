@@ -8,6 +8,7 @@ import { DeedsModule } from 'src/deeds/deeds.module';
 import { LoggerModule } from 'src/logger/logger.module';
 import { PostgresModule } from 'src/postgres/postgres.module';
 import { ConfigModule, ConfigModuleOptions } from '@nestjs/config';
+import { ItemsModule } from 'src/items/items.module';
 
 @Module({
   imports: [
@@ -19,7 +20,8 @@ import { ConfigModule, ConfigModuleOptions } from '@nestjs/config';
     PostgresModule,
     RedisModule,
     UsersModule,
-    DeedsModule
+    DeedsModule,
+    ItemsModule
   ],
   controllers: [AppController],
   providers: [AppService]
