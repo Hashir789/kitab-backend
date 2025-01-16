@@ -15,6 +15,8 @@ export class DeedsService {
     private readonly loggerService: Logger
   ) {}
 
+  //controller functions
+
   async createDeed(request: AuthenticatedRequest, body: DeedCreateDto): Promise<{ 
     id: number; 
     name: string; 
@@ -39,7 +41,7 @@ export class DeedsService {
     try {
       const { email } = request.user;
       const { name, color, hasanaat, hidden, items, scale } = body;
-      this.loggerService.log('createDeeds {controller}');
+      this.loggerService.log('createDeed {controller}');
       const deed = await this.createDeedQuery(email, name, color, hasanaat, hidden, scale, items);
       return deed;
     } catch(error) {
@@ -97,7 +99,7 @@ export class DeedsService {
     }
   }
 
-  // helper function
+  // helper functions
 
   async createDeedQuery(email: string, name: string, color: string, hasanaat: boolean, hidden: boolean, scale: ScaleDto[] | string, items: ItemDto[]): Promise<{ 
     id: number; 
