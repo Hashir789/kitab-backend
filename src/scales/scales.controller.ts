@@ -1,8 +1,9 @@
 import { ScalesService } from './scales.service';
 import { ScaleCreateDto } from './dto/scale-create.dto';
 import { ScaleUpdateDto } from './dto/scale-update.dto';
+import { ScaleDeleteDto } from './dto/scale-delete.dto';
 import { ScaleRankResetDto } from './dto/scale-rank-reset.dto';
-import { Controller, HttpCode, HttpStatus, Post, Body, Patch } from '@nestjs/common';
+import { Controller, HttpCode, HttpStatus, Post, Body, Patch, Delete } from '@nestjs/common';
 
 @Controller('scale')
 export class ScalesController {
@@ -27,4 +28,9 @@ export class ScalesController {
     await this.scalesService.updateScale(body);
   }
 
+  @Delete('delete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteScale(@Body() body: ScaleDeleteDto) {
+    await this.scalesService.deleteScale(body);
+  }
 }
