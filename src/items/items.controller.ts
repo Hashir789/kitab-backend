@@ -2,7 +2,8 @@ import { ItemsService } from './items.service';
 import { ItemHideDto } from './dto/item-hide.dto';
 import { ItemCreateDto } from './dto/item-create.dto';
 import { ItemUpdateDto } from './dto/item-update.dto';
-import { Controller, HttpCode, HttpStatus, Post, Body, Patch } from '@nestjs/common';
+import { Controller, HttpCode, HttpStatus, Post, Body, Patch, Delete } from '@nestjs/common';
+import { ItemDeleteDto } from './dto/item-delete.dto';
 
 @Controller('item')
 export class ItemsController {
@@ -25,5 +26,11 @@ export class ItemsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async updateItem(@Body() body: ItemUpdateDto) {
     await this.itemsService.updateItem(body);
+  }
+
+  @Delete('delete')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteItem(@Body() body: ItemDeleteDto) {
+    await this.itemsService.deleteItem(body);
   }
 }

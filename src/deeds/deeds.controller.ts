@@ -3,6 +3,7 @@ import { DeedHideDto } from './dto/deed-hide.dto';
 import { DeedCreateDto } from './dto/deed-create.dto';
 import { DeedUpdateDto } from './dto/deed-update.dto';
 import { DeedDeleteDto } from './dto/deed-delete.dto';
+import { DeedDateResetDto } from './dto/deed-date-reset.dto';
 import { AuthenticatedRequest } from 'src/auth/auth.interface';
 import { Controller, HttpCode, HttpStatus, Req, Body, Post, Delete, Patch } from '@nestjs/common';
 
@@ -37,7 +38,7 @@ export class DeedsController {
 
   @Delete('date/reset')
   @HttpCode(HttpStatus.CREATED)
-  async dateReset(@Req() request: AuthenticatedRequest, @Body() body: DeedDeleteDto) {
+  async dateReset(@Req() request: AuthenticatedRequest, @Body() body: DeedDateResetDto) {
     return this.deedsService.dateReset(request, body);
   }
 }

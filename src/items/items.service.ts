@@ -4,6 +4,7 @@ import { ItemCreateDto } from './dto/item-create.dto';
 import { ItemUpdateDto } from './dto/item-update.dto';
 import { PostgresService } from 'src/postgres/postgres.service';
 import { Injectable, HttpException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { ItemDeleteDto } from './dto/item-delete.dto';
 
 @Injectable()
 export class ItemsService {
@@ -43,6 +44,17 @@ export class ItemsService {
       this.loggerService.log('updateItem {controller}');
       const { id, name, color } = body;
       await this.updateItemQuery(id, name, color);
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
+  async deleteItem(body: ItemDeleteDto): Promise<void> {
+    try {
+      this.loggerService.log('deleteItem {controller}');
+      const { id } = body;
+      await this.deleteItemQuery(id);
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -92,4 +104,14 @@ export class ItemsService {
     }
   }
 
+  async deleteItemQuery(id: number): Promise<void> {
+    this.loggerService.log('deleteItemQuery {query}');
+    const result: { id: number }[] = await this.postgresService.query(`
+      DELETE from items where id = $1 RETURNING id;
+      `,
+      [id]
+    );
+    if (!result.length)
+      throw new NotFoundException('Item not found');
+  }
 }
