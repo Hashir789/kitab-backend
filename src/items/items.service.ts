@@ -2,9 +2,9 @@ import { ItemHideDto } from './dto/item-hide.dto';
 import { Logger } from 'src/logger/logger.service';
 import { ItemCreateDto } from './dto/item-create.dto';
 import { ItemUpdateDto } from './dto/item-update.dto';
+import { ItemDeleteDto } from './dto/item-delete.dto';
 import { PostgresService } from 'src/postgres/postgres.service';
 import { Injectable, HttpException, BadRequestException, NotFoundException } from '@nestjs/common';
-import { ItemDeleteDto } from './dto/item-delete.dto';
 
 @Injectable()
 export class ItemsService {
