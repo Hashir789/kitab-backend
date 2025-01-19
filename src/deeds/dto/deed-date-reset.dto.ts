@@ -1,8 +1,11 @@
 import { IsNumber } from 'class-validator';
 
-export class DeedDeleteDto {
+export class DeedDateResetDto {
 
   @IsNumber()
   id: number;
+
+  @IsNumber()
+  count_in_days: number;
 
 }

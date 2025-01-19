@@ -2,6 +2,7 @@ import { DeedHideDto } from './dto/deed-hide.dto';
 import { Logger } from 'src/logger/logger.service';
 import { DeedUpdateDto } from './dto/deed-update.dto';
 import { DeedDeleteDto } from './dto/deed-delete.dto';
+import { DeedDateResetDto } from './dto/deed-date-reset.dto';
 import { AuthenticatedRequest } from 'src/auth/auth.interface';
 import { PostgresService } from 'src/postgres/postgres.service';
 import { DeedCreateDto, ScaleDto, ItemDto } from './dto/deed-create.dto';
@@ -86,7 +87,7 @@ export class DeedsService {
     }
   }
 
-  async dateReset(request: AuthenticatedRequest, body: DeedDeleteDto): Promise<{ count: number }> {
+  async dateReset(request: AuthenticatedRequest, body: DeedDateResetDto): Promise<{ count: number }> {
     try {
       const { id: user_id } = request.user;
       const { id, count_in_days } = body;
