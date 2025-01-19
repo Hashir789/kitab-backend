@@ -16,7 +16,7 @@ export class ItemsService {
 
   // controller functions
 
-  async createItem(body: ItemCreateDto): Promise<any> {
+  async createItem(body: ItemCreateDto): Promise<{ id: number; deed_id: number; name: string; color: string; hidden: boolean; }> {
     try {
       const { deed_id, name, color } = body;
       this.loggerService.log('createItem {controller}');
@@ -28,7 +28,7 @@ export class ItemsService {
     }
   }
 
-  async hideItem(body: ItemHideDto): Promise<any> {
+  async hideItem(body: ItemHideDto): Promise<void> {
     try {
       const { item_id, enable } = body;
       this.loggerService.log('hideItem {controller}');
