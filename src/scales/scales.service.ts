@@ -4,6 +4,7 @@ import { ScaleUpdateDto } from './dto/scale-update.dto';
 import { ScaleRankResetDto } from './dto/scale-rank-reset.dto';
 import { PostgresService } from 'src/postgres/postgres.service';
 import { Injectable, HttpException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { ScaleDeleteDto } from './dto/scale-delete.dto';
 
 @Injectable()
 export class ScalesService {
@@ -38,11 +39,22 @@ export class ScalesService {
     }
   }
 
-  async updateScale(body: ScaleUpdateDto): Promise<any> {
+  async updateScale(body: ScaleUpdateDto): Promise<void> {
     try {
       const { id, name, color, rank } = body;
       this.loggerService.log('updateScale {controller}');
       await this.updateScaleQuery(id, name, color, rank);
+    } catch(error) {
+      this.loggerService.error(error.message, error.status ?? 500);
+      throw new HttpException(error.message, error.status ?? 500);
+    }
+  }
+
+  async deleteScale(body: ScaleDeleteDto): Promise<void> {
+    try {
+      const { id } = body;
+      this.loggerService.log('deleteScale {controller}');
+      await this.deleteScaleQuery(id);
     } catch(error) {
       this.loggerService.error(error.message, error.status ?? 500);
       throw new HttpException(error.message, error.status ?? 500);
@@ -100,5 +112,16 @@ ${caseStatements}
       if (!result.length)
         throw new NotFoundException('Scale not found');
     }
+  }
+
+  async deleteScaleQuery(id: number): Promise<void> {
+    this.loggerService.log('deleteScaleQuery {query}');
+    const result: { id: number; }[] = await this.postgresService.query(`
+        DELETE FROM scales WHERE id = $1 RETURNING id;
+      `,
+      [id]
+    );
+    if (!result.length)
+      throw new BadRequestException('Invalid email or credentials');
   }
 }
