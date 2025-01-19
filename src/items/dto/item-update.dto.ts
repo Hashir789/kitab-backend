@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsBoolean, IsString, IsNotEmpty } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsNotEmpty } from 'class-validator';
 
 export class ItemUpdateDto {
   @IsInt()
