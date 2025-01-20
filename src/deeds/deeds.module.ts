@@ -6,4 +6,5 @@ import { DeedsService } from './deeds.service';
   controllers: [DeedsController],
   providers: [DeedsService]
 })
+
 export class DeedsModule {}

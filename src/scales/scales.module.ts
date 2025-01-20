@@ -6,4 +6,5 @@ import { ScalesService } from './scales.service';
   controllers: [ScalesController],
   providers: [ScalesService]
 })
+
 export class ScalesModule {}

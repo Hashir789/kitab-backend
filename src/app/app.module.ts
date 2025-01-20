@@ -5,11 +5,12 @@ import { AuthModule } from 'src/auth/auth.module';
 import { UsersModule } from 'src/users/users.module';
 import { RedisModule } from 'src/redis/redis.module';
 import { DeedsModule } from 'src/deeds/deeds.module';
+import { ItemsModule } from 'src/items/items.module';
 import { LoggerModule } from 'src/logger/logger.module';
+import { ScalesModule } from 'src/scales/scales.module';
+import { RecordsModule } from 'src/record/record.module';
 import { PostgresModule } from 'src/postgres/postgres.module';
 import { ConfigModule, ConfigModuleOptions } from '@nestjs/config';
-import { ItemsModule } from 'src/items/items.module';
-import { ScalesModule } from 'src/scales/scales.module';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { ScalesModule } from 'src/scales/scales.module';
     UsersModule,
     DeedsModule,
     ItemsModule,
-    ScalesModule
+    ScalesModule,
+    RecordsModule
   ],
   controllers: [AppController],
   providers: [AppService]
