@@ -1,10 +1,10 @@
 import { Logger } from 'src/logger/logger.service';
 import { ScaleCreateDto } from './dto/scale-create.dto';
 import { ScaleUpdateDto } from './dto/scale-update.dto';
+import { ScaleDeleteDto } from './dto/scale-delete.dto';
 import { ScaleRankResetDto } from './dto/scale-rank-reset.dto';
 import { PostgresService } from 'src/postgres/postgres.service';
 import { Injectable, HttpException, BadRequestException, NotFoundException } from '@nestjs/common';
-import { ScaleDeleteDto } from './dto/scale-delete.dto';
 
 @Injectable()
 export class ScalesService {
