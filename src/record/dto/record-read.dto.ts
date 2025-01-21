@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsDate } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsNotEmpty, IsDate } from 'class-validator';
 
 export class ReadRecordDto {
   @IsNotEmpty()
