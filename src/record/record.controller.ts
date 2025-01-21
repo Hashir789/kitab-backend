@@ -1,6 +1,7 @@
 import { RecordsService } from './record.service';
 import { ReadRecordDto } from './dto/record-read.dto';
 import { CreateRecordDto } from './dto/record-create.dto';
+import { updateRecordDto } from './dto/record-update.dto';
 import { Controller, HttpCode, HttpStatus, Get, Query, Body, Post } from '@nestjs/common';
 
 @Controller('record')
@@ -18,5 +19,11 @@ export class RecordsController {
   @HttpCode(HttpStatus.CREATED)
   async createRecord(@Body() body: CreateRecordDto) {
     return this.recordsService.createRecord(body);
+  }
+
+  @Post('update')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async updateRecord(@Body() body: updateRecordDto) {
+    await this.recordsService.updateRecord(body);
   }
 }
