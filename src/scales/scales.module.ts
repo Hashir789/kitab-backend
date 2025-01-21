@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ScalesController } from './scales.controller';
 import { ScalesService } from './scales.service';
+import { ScalesController } from './scales.controller';
 
 @Module({
   controllers: [ScalesController],
